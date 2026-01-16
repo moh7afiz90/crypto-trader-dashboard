@@ -79,8 +79,8 @@ export function EquityCurve({ data }: EquityCurveProps) {
                   borderRadius: '8px',
                 }}
                 labelStyle={{ color: 'hsl(var(--foreground))' }}
-                formatter={(value: number) => [
-                  `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+                formatter={(value) => [
+                  `$${(value as number)?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? '0'}`,
                   'Equity',
                 ]}
               />
