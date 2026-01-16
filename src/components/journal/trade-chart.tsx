@@ -6,6 +6,7 @@ import {
   ColorType,
   CrosshairMode,
   CandlestickSeries,
+  HistogramSeries,
   Time,
   IChartApi,
   ISeriesApi,
@@ -58,6 +59,7 @@ export function TradeChart({
   const chartContainerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
   const seriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null)
+  const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [timeframe, setTimeframe] = useState<Timeframe>('4h')
@@ -126,8 +128,27 @@ export function TradeChart({
       wickDownColor: '#ef4444',
     })
 
+    // Add volume series
+    const volumeSeries = chart.addSeries(HistogramSeries, {
+      color: '#6b7280',
+      priceFormat: {
+        type: 'volume',
+      },
+      priceScaleId: 'volume',
+    })
+
+    // Configure volume price scale
+    chart.priceScale('volume').applyOptions({
+      scaleMargins: {
+        top: 0.85,
+        bottom: 0,
+      },
+      borderVisible: false,
+    })
+
     chartRef.current = chart
     seriesRef.current = candleSeries
+    volumeSeriesRef.current = volumeSeries
 
     // Handle resize
     const handleResize = () => {
@@ -151,7 +172,8 @@ export function TradeChart({
   useEffect(() => {
     const chart = chartRef.current
     const candleSeries = seriesRef.current
-    if (!chart || !candleSeries) return
+    const volumeSeries = volumeSeriesRef.current
+    if (!chart || !candleSeries || !volumeSeries) return
 
     const fetchCandles = async () => {
       try {
@@ -194,6 +216,15 @@ export function TradeChart({
         }))
 
         candleSeries.setData(formattedCandles)
+
+        // Set volume data with colors based on candle direction
+        const volumeData = candles.map((c) => ({
+          time: c.time as Time,
+          value: c.volume,
+          color: c.close >= c.open ? 'rgba(34, 197, 94, 0.5)' : 'rgba(239, 68, 68, 0.5)',
+        }))
+
+        volumeSeries.setData(volumeData)
 
         // Add price lines for entry, SL, TP
         // Entry price line (blue)
@@ -352,6 +383,11 @@ export function TradeChart({
             <span>Current</span>
           </div>
         )}
+        <div className="flex items-center gap-1.5 ml-auto">
+          <div className="w-3 h-3 bg-green-500/50 rounded-sm"></div>
+          <div className="w-3 h-3 bg-red-500/50 rounded-sm"></div>
+          <span>Volume</span>
+        </div>
       </div>
     </div>
   )
