@@ -24,10 +24,7 @@ import {
   CalendarDays,
   Timer,
   Activity,
-  Percent,
-  DollarSign,
   Crosshair,
-  Gauge,
 } from 'lucide-react'
 import { TradeChart } from './trade-chart'
 import type { JournalEntry } from '@/app/(dashboard)/journal/page'
@@ -84,59 +81,6 @@ function parseAIResponse(responseText: string | undefined): ParsedAnalysis | nul
   return null
 }
 
-function StatBox({
-  label,
-  value,
-  subValue,
-  icon: Icon,
-  valueColor
-}: {
-  label: string
-  value: string
-  subValue?: string
-  icon: React.ElementType
-  valueColor?: string
-}) {
-  return (
-    <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-3">
-      <div className="flex items-center gap-1.5 text-zinc-500 text-xs mb-1">
-        <Icon className="h-3.5 w-3.5" />
-        <span>{label}</span>
-      </div>
-      <div className={`font-mono text-sm font-semibold ${valueColor || 'text-zinc-100'}`}>
-        {value}
-      </div>
-      {subValue && (
-        <div className="text-xs text-zinc-500 mt-0.5">{subValue}</div>
-      )}
-    </div>
-  )
-}
-
-function PriceLevel({
-  label,
-  price,
-  color,
-  isActive
-}: {
-  label: string
-  price: number
-  color: string
-  isActive?: boolean
-}) {
-  return (
-    <div className={`flex items-center justify-between py-2 px-3 rounded ${isActive ? 'bg-zinc-800/50' : ''}`}>
-      <div className="flex items-center gap-2">
-        <div className={`w-2 h-2 rounded-full ${color}`}></div>
-        <span className="text-xs text-zinc-400">{label}</span>
-      </div>
-      <span className="font-mono text-sm text-zinc-200">
-        ${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}
-      </span>
-    </div>
-  )
-}
-
 export function TradeDetailModal({ trade, open, onClose }: TradeDetailModalProps) {
   const parsedAnalysis = useMemo(() => {
     if (!trade?.analysis?.response_received) return null
@@ -165,23 +109,16 @@ export function TradeDetailModal({ trade, open, onClose }: TradeDetailModalProps
   const hasTimeframeAnalysis = parsedAnalysis?.analysis && Object.values(parsedAnalysis.analysis).some(Boolean)
   const exitConfig = trade.exit_reason ? exitReasonConfig[trade.exit_reason] : null
 
-  // Calculate price change percentage
-  const priceChange = isOpen && trade.current_price
-    ? ((trade.current_price - trade.entry_price) / trade.entry_price) * 100
-    : trade.exit_price
-    ? ((trade.exit_price - trade.entry_price) / trade.entry_price) * 100
-    : 0
-
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="w-[95vw] max-w-[1800px] max-h-[95vh] overflow-y-auto p-0 bg-zinc-950 border-zinc-800">
+      <DialogContent className="!w-[95vw] !max-w-[1600px] max-h-[95vh] overflow-y-auto p-0 bg-zinc-950 border-zinc-800">
         {/* Header */}
-        <DialogHeader className="p-4 border-b border-zinc-800 bg-zinc-900/50">
+        <DialogHeader className="sticky top-0 z-10 p-4 border-b border-zinc-800 bg-zinc-950">
           <DialogTitle className="flex items-center justify-between pr-8">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <span className="text-2xl font-bold text-zinc-100">{trade.symbol.replace('/USDT', '')}</span>
-                <span className="text-zinc-500 text-lg">/USDT</span>
+                <span className="text-zinc-500 text-lg font-normal">/USDT</span>
               </div>
               {isOpen ? (
                 <Badge variant="outline" className="gap-1 bg-blue-500/10 border-blue-500/30 text-blue-400">
@@ -219,12 +156,12 @@ export function TradeDetailModal({ trade, open, onClose }: TradeDetailModalProps
           </DialogTitle>
         </DialogHeader>
 
-        <div className="p-4">
-          {/* Main Grid Layout */}
-          <div className="grid grid-cols-12 gap-4">
-            {/* Chart Section - Takes 8 columns */}
-            <div className="col-span-12 lg:col-span-8">
-              <div className="bg-zinc-900/30 border border-zinc-800 rounded-lg p-3">
+        <div className="p-4 space-y-4">
+          {/* Chart and Stats Row */}
+          <div className="flex flex-col xl:flex-row gap-4">
+            {/* Chart - Takes most space */}
+            <div className="flex-1 min-w-0">
+              <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
                 <TradeChart
                   symbol={trade.symbol}
                   entryPrice={trade.entry_price}
@@ -240,164 +177,204 @@ export function TradeDetailModal({ trade, open, onClose }: TradeDetailModalProps
               </div>
             </div>
 
-            {/* Right Panel - Takes 4 columns */}
-            <div className="col-span-12 lg:col-span-4 space-y-4">
-              {/* Trade Stats */}
-              <div className="bg-zinc-900/30 border border-zinc-800 rounded-lg p-4">
-                <h3 className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-3">Trade Stats</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  <StatBox
-                    label="Duration"
-                    value={duration}
-                    icon={Clock}
-                  />
-                  <StatBox
-                    label="R:R Ratio"
-                    value={trade.analysis?.risk_reward ? `${trade.analysis.risk_reward.toFixed(1)}:1` : '-'}
-                    icon={Gauge}
-                  />
-                  <StatBox
-                    label="Position Size"
-                    value={`$${trade.entry_value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
-                    icon={DollarSign}
-                  />
-                  <StatBox
-                    label="Price Change"
-                    value={`${priceChange >= 0 ? '+' : ''}${priceChange.toFixed(2)}%`}
-                    icon={Percent}
-                    valueColor={priceChange >= 0 ? 'text-green-400' : 'text-red-400'}
-                  />
+            {/* Stats Panel */}
+            <div className="xl:w-80 flex-shrink-0 space-y-4">
+              {/* Trade Info */}
+              <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
+                <h3 className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-3">Trade Info</h3>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-zinc-400">Duration</span>
+                    <span className="text-sm font-mono text-zinc-100">{duration}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-zinc-400">R:R Ratio</span>
+                    <span className="text-sm font-mono text-zinc-100">
+                      {trade.analysis?.risk_reward ? `${trade.analysis.risk_reward.toFixed(1)}:1` : '-'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-zinc-400">Position Size</span>
+                    <span className="text-sm font-mono text-zinc-100">
+                      ${trade.entry_value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-zinc-400">Setup Type</span>
+                    <span className="text-sm font-mono text-zinc-100 capitalize">
+                      {trade.analysis?.setup_type || '-'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-zinc-400">Confidence</span>
+                    <Badge
+                      variant="outline"
+                      className={`text-xs ${
+                        trade.analysis?.confidence === 'HIGH'
+                          ? 'bg-green-500/10 border-green-500/30 text-green-400'
+                          : trade.analysis?.confidence === 'MEDIUM'
+                          ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400'
+                          : 'bg-zinc-500/10 border-zinc-500/30 text-zinc-400'
+                      }`}
+                    >
+                      {trade.analysis?.confidence || '-'}
+                    </Badge>
+                  </div>
                 </div>
               </div>
 
               {/* Price Levels */}
-              <div className="bg-zinc-900/30 border border-zinc-800 rounded-lg p-4">
+              <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
                 <h3 className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-3">Price Levels</h3>
-                <div className="space-y-1">
+                <div className="space-y-2">
                   {trade.take_profit_2 && (
-                    <PriceLevel label="TP2" price={trade.take_profit_2} color="bg-green-500" />
+                    <div className="flex justify-between items-center py-1.5 px-2 rounded bg-green-500/5">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                        <span className="text-xs text-zinc-400">TP2</span>
+                      </div>
+                      <span className="text-sm font-mono text-zinc-200">
+                        ${trade.take_profit_2.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}
+                      </span>
+                    </div>
                   )}
-                  <PriceLevel label="TP1" price={trade.take_profit_1} color="bg-green-500" />
+                  <div className="flex justify-between items-center py-1.5 px-2 rounded bg-green-500/5">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                      <span className="text-xs text-zinc-400">TP1</span>
+                    </div>
+                    <span className="text-sm font-mono text-zinc-200">
+                      ${trade.take_profit_1.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}
+                    </span>
+                  </div>
                   {isOpen && trade.current_price && (
-                    <PriceLevel label="Current" price={trade.current_price} color="bg-cyan-500" isActive />
+                    <div className="flex justify-between items-center py-1.5 px-2 rounded bg-cyan-500/10">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse"></div>
+                        <span className="text-xs text-zinc-400">Current</span>
+                      </div>
+                      <span className="text-sm font-mono text-cyan-400">
+                        ${trade.current_price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}
+                      </span>
+                    </div>
                   )}
                   {!isOpen && trade.exit_price && (
-                    <PriceLevel label="Exit" price={trade.exit_price} color="bg-orange-500" isActive />
+                    <div className="flex justify-between items-center py-1.5 px-2 rounded bg-orange-500/10">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-orange-500"></div>
+                        <span className="text-xs text-zinc-400">Exit</span>
+                      </div>
+                      <span className="text-sm font-mono text-orange-400">
+                        ${trade.exit_price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}
+                      </span>
+                    </div>
                   )}
-                  <PriceLevel label="Entry" price={trade.entry_price} color="bg-blue-500" />
-                  <PriceLevel label="Stop Loss" price={trade.stop_loss} color="bg-red-500" />
+                  <div className="flex justify-between items-center py-1.5 px-2 rounded bg-blue-500/5">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                      <span className="text-xs text-zinc-400">Entry</span>
+                    </div>
+                    <span className="text-sm font-mono text-zinc-200">
+                      ${trade.entry_price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center py-1.5 px-2 rounded bg-red-500/5">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                      <span className="text-xs text-zinc-400">Stop Loss</span>
+                    </div>
+                    <span className="text-sm font-mono text-zinc-200">
+                      ${trade.stop_loss.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              {/* Entry/Exit Times */}
-              <div className="bg-zinc-900/30 border border-zinc-800 rounded-lg p-4">
+              {/* Timeline */}
+              <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
                 <h3 className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-3">Timeline</h3>
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-xs text-zinc-400">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                      Entry
+                      <span className="text-sm text-zinc-400">Entry</span>
                     </div>
-                    <div className="text-right">
-                      <div className="text-sm font-mono text-zinc-200">{format(entryDate, 'MMM d, HH:mm')}</div>
-                      <div className="text-xs text-zinc-500">{format(entryDate, 'yyyy')}</div>
-                    </div>
+                    <span className="text-sm font-mono text-zinc-200">{format(entryDate, 'MMM d, HH:mm')}</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-xs text-zinc-400">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-2">
                       <div className={`w-2 h-2 rounded-full ${isOpen ? 'bg-cyan-500 animate-pulse' : 'bg-orange-500'}`}></div>
-                      {isOpen ? 'Now' : 'Exit'}
+                      <span className="text-sm text-zinc-400">{isOpen ? 'Now' : 'Exit'}</span>
                     </div>
-                    <div className="text-right">
-                      <div className="text-sm font-mono text-zinc-200">
-                        {isOpen ? 'Active' : exitDate ? format(exitDate, 'MMM d, HH:mm') : '-'}
-                      </div>
-                      {!isOpen && exitDate && (
-                        <div className="text-xs text-zinc-500">{format(exitDate, 'yyyy')}</div>
-                      )}
-                    </div>
+                    <span className="text-sm font-mono text-zinc-200">
+                      {isOpen ? 'Active' : exitDate ? format(exitDate, 'MMM d, HH:mm') : '-'}
+                    </span>
                   </div>
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* AI Analysis Section - Full width */}
-            {trade.analysis && (
-              <div className="col-span-12">
-                <div className="bg-zinc-900/30 border border-zinc-800 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-xs font-medium text-zinc-500 uppercase tracking-wider flex items-center gap-2">
-                      <Brain className="h-4 w-4" />
-                      AI Analysis
-                    </h3>
-                    <div className="flex items-center gap-2">
-                      {trade.analysis.setup_type && (
-                        <Badge variant="outline" className="bg-zinc-800 border-zinc-700 text-zinc-300 capitalize">
-                          <Crosshair className="h-3 w-3 mr-1" />
-                          {trade.analysis.setup_type}
-                        </Badge>
-                      )}
-                      {trade.analysis.confidence && (
-                        <Badge
-                          variant="outline"
-                          className={`
-                            ${trade.analysis.confidence === 'HIGH'
-                              ? 'bg-green-500/10 border-green-500/30 text-green-400'
-                              : trade.analysis.confidence === 'MEDIUM'
-                              ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400'
-                              : 'bg-zinc-500/10 border-zinc-500/30 text-zinc-400'}
-                          `}
-                        >
-                          {trade.analysis.confidence}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Trade Thesis */}
-                  {parsedAnalysis?.reasoning && (
-                    <div className="mb-4 p-3 bg-zinc-800/50 border border-zinc-700/50 rounded-lg">
-                      <div className="text-xs text-zinc-500 mb-2 font-medium">Trade Thesis</div>
-                      <p className="text-sm text-zinc-300 leading-relaxed">{parsedAnalysis.reasoning}</p>
-                    </div>
-                  )}
-
-                  {/* Multi-Timeframe Analysis */}
-                  {hasTimeframeAnalysis && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-2">
-                      {(['monthly', 'weekly', 'three_day', 'daily', 'four_hour'] as const).map((timeframe) => {
-                        const content = parsedAnalysis?.analysis?.[timeframe]
-                        if (!content) return null
-
-                        const config = timeframeConfig[timeframe]
-
-                        return (
-                          <div key={timeframe} className="bg-zinc-800/30 border border-zinc-700/30 rounded-lg p-3">
-                            <div className="flex items-center gap-1.5 mb-2">
-                              <span className="text-zinc-400">{config.icon}</span>
-                              <span className="text-xs font-medium text-zinc-400">{config.label}</span>
-                            </div>
-                            <p className="text-xs text-zinc-400 leading-relaxed line-clamp-4">
-                              {content}
-                            </p>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-
-                  {/* Fallback */}
-                  {!parsedAnalysis && trade.analysis.response_received && (
-                    <div className="bg-zinc-800/50 rounded-lg p-3 max-h-[200px] overflow-y-auto">
-                      <pre className="text-xs text-zinc-400 whitespace-pre-wrap font-mono leading-relaxed">
-                        {trade.analysis.response_received}
-                      </pre>
-                    </div>
+          {/* AI Analysis Section */}
+          {trade.analysis && (
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xs font-medium text-zinc-500 uppercase tracking-wider flex items-center gap-2">
+                  <Brain className="h-4 w-4" />
+                  AI Analysis
+                </h3>
+                <div className="flex items-center gap-2">
+                  {trade.analysis.setup_type && (
+                    <Badge variant="outline" className="bg-zinc-800 border-zinc-700 text-zinc-300 capitalize">
+                      <Crosshair className="h-3 w-3 mr-1" />
+                      {trade.analysis.setup_type}
+                    </Badge>
                   )}
                 </div>
               </div>
-            )}
-          </div>
+
+              {/* Trade Thesis */}
+              {parsedAnalysis?.reasoning && (
+                <div className="mb-4 p-4 bg-zinc-800/50 border border-zinc-700/50 rounded-lg">
+                  <div className="text-xs text-zinc-500 mb-2 font-medium uppercase tracking-wider">Trade Thesis</div>
+                  <p className="text-sm text-zinc-300 leading-relaxed">{parsedAnalysis.reasoning}</p>
+                </div>
+              )}
+
+              {/* Multi-Timeframe Analysis */}
+              {hasTimeframeAnalysis && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+                  {(['monthly', 'weekly', 'three_day', 'daily', 'four_hour'] as const).map((timeframe) => {
+                    const content = parsedAnalysis?.analysis?.[timeframe]
+                    if (!content) return null
+
+                    const config = timeframeConfig[timeframe]
+
+                    return (
+                      <div key={timeframe} className="bg-zinc-800/30 border border-zinc-700/30 rounded-lg p-3">
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <span className="text-zinc-400">{config.icon}</span>
+                          <span className="text-xs font-medium text-zinc-400">{config.label}</span>
+                        </div>
+                        <p className="text-xs text-zinc-400 leading-relaxed">
+                          {content}
+                        </p>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* Fallback */}
+              {!parsedAnalysis && trade.analysis.response_received && (
+                <div className="bg-zinc-800/50 rounded-lg p-3 max-h-[200px] overflow-y-auto">
+                  <pre className="text-xs text-zinc-400 whitespace-pre-wrap font-mono leading-relaxed">
+                    {trade.analysis.response_received}
+                  </pre>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
