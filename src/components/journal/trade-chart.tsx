@@ -7,7 +7,11 @@ import {
   CrosshairMode,
   CandlestickSeries,
   Time,
+  IChartApi,
+  ISeriesApi,
 } from 'lightweight-charts'
+import { Button } from '@/components/ui/button'
+import { Loader2 } from 'lucide-react'
 
 interface TradeChartProps {
   symbol: string
@@ -31,6 +35,14 @@ interface CandleData {
   volume: number
 }
 
+type Timeframe = '1h' | '4h' | '1d'
+
+const timeframeOptions: { value: Timeframe; label: string }[] = [
+  { value: '1h', label: '1H' },
+  { value: '4h', label: '4H' },
+  { value: '1d', label: '1D' },
+]
+
 export function TradeChart({
   symbol,
   entryPrice,
@@ -44,53 +56,67 @@ export function TradeChart({
   isOpen,
 }: TradeChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null)
+  const chartRef = useRef<IChartApi | null>(null)
+  const seriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [timeframe, setTimeframe] = useState<Timeframe>('4h')
 
+  // Initialize chart once
   useEffect(() => {
     if (!chartContainerRef.current) return
 
-    // Create chart
     const chart = createChart(chartContainerRef.current, {
       layout: {
         background: { type: ColorType.Solid, color: 'transparent' },
         textColor: '#9ca3af',
+        fontSize: 12,
       },
       grid: {
-        vertLines: { color: 'rgba(255, 255, 255, 0.05)' },
-        horzLines: { color: 'rgba(255, 255, 255, 0.05)' },
+        vertLines: { color: 'rgba(255, 255, 255, 0.03)' },
+        horzLines: { color: 'rgba(255, 255, 255, 0.03)' },
       },
       crosshair: {
         mode: CrosshairMode.Normal,
         vertLine: {
-          color: 'rgba(255, 255, 255, 0.2)',
+          color: 'rgba(255, 255, 255, 0.3)',
           width: 1,
           style: 2,
+          labelBackgroundColor: '#374151',
         },
         horzLine: {
-          color: 'rgba(255, 255, 255, 0.2)',
+          color: 'rgba(255, 255, 255, 0.3)',
           width: 1,
           style: 2,
+          labelBackgroundColor: '#374151',
         },
       },
       rightPriceScale: {
         borderColor: 'rgba(255, 255, 255, 0.1)',
+        scaleMargins: {
+          top: 0.1,
+          bottom: 0.1,
+        },
       },
       timeScale: {
         borderColor: 'rgba(255, 255, 255, 0.1)',
         timeVisible: true,
         secondsVisible: false,
+        barSpacing: 12,
       },
       handleScale: {
         axisPressedMouseMove: true,
+        mouseWheel: true,
+        pinch: true,
       },
       handleScroll: {
         mouseWheel: true,
         pressedMouseMove: true,
+        horzTouchDrag: true,
+        vertTouchDrag: true,
       },
     })
 
-    // Create candlestick series using v5 API
     const candleSeries = chart.addSeries(CandlestickSeries, {
       upColor: '#22c55e',
       downColor: '#ef4444',
@@ -100,11 +126,41 @@ export function TradeChart({
       wickDownColor: '#ef4444',
     })
 
-    // Fetch candle data
+    chartRef.current = chart
+    seriesRef.current = candleSeries
+
+    // Handle resize
+    const handleResize = () => {
+      if (chartContainerRef.current) {
+        chart.applyOptions({
+          width: chartContainerRef.current.clientWidth,
+        })
+      }
+    }
+
+    window.addEventListener('resize', handleResize)
+    handleResize()
+
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      chart.remove()
+    }
+  }, [])
+
+  // Fetch and update data when timeframe changes
+  useEffect(() => {
+    const chart = chartRef.current
+    const candleSeries = seriesRef.current
+    if (!chart || !candleSeries) return
+
     const fetchCandles = async () => {
       try {
         setLoading(true)
-        const response = await fetch(`/api/candles?symbol=${symbol}&timeframe=4h&limit=100`)
+        setError(null)
+
+        const response = await fetch(
+          `/api/candles?symbol=${symbol}&timeframe=${timeframe}&limit=200`
+        )
 
         if (!response.ok) {
           throw new Error('Failed to fetch candles')
@@ -118,8 +174,18 @@ export function TradeChart({
           return
         }
 
-        // Set candle data - convert time to proper format
-        const formattedCandles = candles.map(c => ({
+        // Clear existing price lines
+        const existingPriceLines = (candleSeries as any)._priceLines || []
+        existingPriceLines.forEach((line: any) => {
+          try {
+            candleSeries.removePriceLine(line)
+          } catch {
+            // Ignore errors
+          }
+        })
+
+        // Set candle data
+        const formattedCandles = candles.map((c) => ({
           time: c.time as Time,
           open: c.open,
           high: c.high,
@@ -196,7 +262,7 @@ export function TradeChart({
           })
         }
 
-        // Fit content
+        // Fit content with padding
         chart.timeScale().fitContent()
 
         setLoading(false)
@@ -208,27 +274,23 @@ export function TradeChart({
     }
 
     fetchCandles()
-
-    // Handle resize
-    const handleResize = () => {
-      if (chartContainerRef.current) {
-        chart.applyOptions({
-          width: chartContainerRef.current.clientWidth,
-        })
-      }
-    }
-
-    window.addEventListener('resize', handleResize)
-
-    return () => {
-      window.removeEventListener('resize', handleResize)
-      chart.remove()
-    }
-  }, [symbol, entryPrice, entryTimestamp, exitPrice, exitTimestamp, stopLoss, takeProfit1, takeProfit2, currentPrice, isOpen])
+  }, [
+    symbol,
+    timeframe,
+    entryPrice,
+    entryTimestamp,
+    exitPrice,
+    exitTimestamp,
+    stopLoss,
+    takeProfit1,
+    takeProfit2,
+    currentPrice,
+    isOpen,
+  ])
 
   if (error) {
     return (
-      <div className="h-[300px] flex items-center justify-center text-muted-foreground bg-muted/30 rounded-lg">
+      <div className="h-[450px] flex items-center justify-center text-muted-foreground bg-muted/30 rounded-lg">
         {error}
       </div>
     )
@@ -236,36 +298,57 @@ export function TradeChart({
 
   return (
     <div className="relative">
+      {/* Timeframe selector */}
+      <div className="absolute top-2 left-2 z-20 flex gap-1">
+        {timeframeOptions.map((tf) => (
+          <Button
+            key={tf.value}
+            variant={timeframe === tf.value ? 'default' : 'outline'}
+            size="sm"
+            className="h-7 px-3 text-xs"
+            onClick={() => setTimeframe(tf.value)}
+          >
+            {tf.label}
+          </Button>
+        ))}
+      </div>
+
+      {/* Loading overlay */}
       {loading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-10">
-          <div className="text-muted-foreground">Loading chart...</div>
+        <div className="absolute inset-0 flex items-center justify-center bg-background/70 z-10 rounded-lg">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span>Loading chart...</span>
+          </div>
         </div>
       )}
-      <div ref={chartContainerRef} className="h-[300px] w-full" />
+
+      {/* Chart container */}
+      <div ref={chartContainerRef} className="h-[450px] w-full" />
 
       {/* Legend */}
-      <div className="flex flex-wrap gap-4 mt-2 text-xs text-muted-foreground">
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-0.5 bg-blue-500"></div>
+      <div className="flex flex-wrap gap-4 mt-3 px-2 text-xs text-muted-foreground">
+        <div className="flex items-center gap-1.5">
+          <div className="w-4 h-0.5 bg-blue-500 rounded"></div>
           <span>Entry</span>
         </div>
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-0.5 bg-red-500 border-dashed"></div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-4 h-0.5 bg-red-500 rounded" style={{ backgroundImage: 'repeating-linear-gradient(90deg, #ef4444, #ef4444 4px, transparent 4px, transparent 8px)' }}></div>
           <span>Stop Loss</span>
         </div>
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-0.5 bg-green-500 border-dashed"></div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-4 h-0.5 bg-green-500 rounded" style={{ backgroundImage: 'repeating-linear-gradient(90deg, #22c55e, #22c55e 4px, transparent 4px, transparent 8px)' }}></div>
           <span>Take Profit</span>
         </div>
         {!isOpen && exitPrice && (
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-0.5 bg-orange-500"></div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-4 h-0.5 bg-orange-500 rounded"></div>
             <span>Exit</span>
           </div>
         )}
         {isOpen && currentPrice && (
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-0.5 bg-cyan-500"></div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-4 h-0.5 bg-cyan-500 rounded"></div>
             <span>Current</span>
           </div>
         )}

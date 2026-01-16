@@ -112,10 +112,10 @@ export function TradeDetailModal({ trade, open, onClose }: TradeDetailModalProps
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[95vh] overflow-y-auto p-0">
+      <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto p-0">
         {/* Header */}
-        <DialogHeader className="p-4 pb-0">
-          <DialogTitle className="flex items-center justify-between">
+        <DialogHeader className="p-4 pb-0 border-b border-border/50">
+          <DialogTitle className="flex items-center justify-between pr-8">
             <div className="flex items-center gap-3">
               <span className="text-2xl font-bold">{trade.symbol.replace('/USDT', '')}</span>
               {isOpen ? (
