@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import { formatDistanceStrict, formatDistanceToNow, format } from 'date-fns'
 import {
   Dialog,
@@ -20,6 +21,11 @@ import {
   Brain,
   DollarSign,
   Percent,
+  Calendar,
+  BarChart3,
+  Layers,
+  CalendarDays,
+  Timer,
 } from 'lucide-react'
 import type { JournalEntry } from '@/app/(dashboard)/journal/page'
 
@@ -27,6 +33,17 @@ interface TradeDetailModalProps {
   trade: JournalEntry | null
   open: boolean
   onClose: () => void
+}
+
+interface ParsedAnalysis {
+  analysis?: {
+    monthly?: string
+    weekly?: string
+    three_day?: string
+    daily?: string
+    four_hour?: string
+  }
+  reasoning?: string
 }
 
 const exitReasonIcons: Record<string, React.ReactNode> = {
@@ -45,7 +62,48 @@ const exitReasonLabels: Record<string, string> = {
   TRAILING_STOP: 'Trailing Stop Hit',
 }
 
+const timeframeIcons: Record<string, React.ReactNode> = {
+  monthly: <Calendar className="h-4 w-4" />,
+  weekly: <CalendarDays className="h-4 w-4" />,
+  three_day: <Layers className="h-4 w-4" />,
+  daily: <BarChart3 className="h-4 w-4" />,
+  four_hour: <Timer className="h-4 w-4" />,
+}
+
+const timeframeLabels: Record<string, string> = {
+  monthly: 'Monthly (1M)',
+  weekly: 'Weekly (1W)',
+  three_day: '3-Day (3D)',
+  daily: 'Daily (1D)',
+  four_hour: '4-Hour (4H)',
+}
+
+function parseAIResponse(responseText: string | undefined): ParsedAnalysis | null {
+  if (!responseText) return null
+
+  try {
+    // Try to extract JSON from the response
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/)
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0])
+      return {
+        analysis: parsed.analysis,
+        reasoning: parsed.reasoning,
+      }
+    }
+  } catch {
+    // If JSON parsing fails, return null
+  }
+
+  return null
+}
+
 export function TradeDetailModal({ trade, open, onClose }: TradeDetailModalProps) {
+  const parsedAnalysis = useMemo(() => {
+    if (!trade?.analysis?.response_received) return null
+    return parseAIResponse(trade.analysis.response_received)
+  }, [trade?.analysis?.response_received])
+
   if (!trade) return null
 
   const isOpen = trade.status === 'OPEN'
@@ -65,6 +123,8 @@ export function TradeDetailModal({ trade, open, onClose }: TradeDetailModalProps
   } else {
     duration = '-'
   }
+
+  const hasTimeframeAnalysis = parsedAnalysis?.analysis && Object.values(parsedAnalysis.analysis).some(Boolean)
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -230,7 +290,8 @@ export function TradeDetailModal({ trade, open, onClose }: TradeDetailModalProps
                   AI Analysis
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-4">
+                {/* Setup badges */}
                 <div className="flex flex-wrap gap-2">
                   {trade.analysis.setup_type && (
                     <Badge variant="secondary" className="capitalize">
@@ -252,9 +313,45 @@ export function TradeDetailModal({ trade, open, onClose }: TradeDetailModalProps
                   )}
                 </div>
 
-                {trade.analysis.response_received && (
-                  <div className="mt-3">
-                    <p className="text-xs text-muted-foreground mb-2">AI Reasoning</p>
+                {/* Trade Thesis / Reasoning */}
+                {parsedAnalysis?.reasoning && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-2 font-medium">Trade Thesis</p>
+                    <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
+                      <p className="text-sm leading-relaxed">{parsedAnalysis.reasoning}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Multi-Timeframe Analysis */}
+                {hasTimeframeAnalysis && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-3 font-medium">Multi-Timeframe Breakdown</p>
+                    <div className="space-y-3">
+                      {(['monthly', 'weekly', 'three_day', 'daily', 'four_hour'] as const).map((timeframe) => {
+                        const content = parsedAnalysis?.analysis?.[timeframe]
+                        if (!content) return null
+
+                        return (
+                          <div key={timeframe} className="bg-muted/50 rounded-lg p-3">
+                            <div className="flex items-center gap-2 mb-2">
+                              {timeframeIcons[timeframe]}
+                              <span className="text-xs font-medium">{timeframeLabels[timeframe]}</span>
+                            </div>
+                            <p className="text-sm text-muted-foreground leading-relaxed">
+                              {content}
+                            </p>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Fallback: Raw response if parsing failed */}
+                {!parsedAnalysis && trade.analysis.response_received && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-2">AI Response</p>
                     <div className="bg-muted/50 rounded-lg p-4 max-h-[300px] overflow-y-auto">
                       <pre className="text-sm whitespace-pre-wrap font-sans leading-relaxed">
                         {trade.analysis.response_received}
