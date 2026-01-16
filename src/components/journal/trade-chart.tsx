@@ -1,7 +1,13 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { createChart, IChartApi, ISeriesApi, CandlestickData, Time } from 'lightweight-charts'
+import {
+  createChart,
+  ColorType,
+  CrosshairMode,
+  CandlestickSeries,
+  Time,
+} from 'lightweight-charts'
 
 interface TradeChartProps {
   symbol: string
@@ -38,8 +44,6 @@ export function TradeChart({
   isOpen,
 }: TradeChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null)
-  const chartRef = useRef<IChartApi | null>(null)
-  const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -49,7 +53,7 @@ export function TradeChart({
     // Create chart
     const chart = createChart(chartContainerRef.current, {
       layout: {
-        background: { color: 'transparent' },
+        background: { type: ColorType.Solid, color: 'transparent' },
         textColor: '#9ca3af',
       },
       grid: {
@@ -57,7 +61,7 @@ export function TradeChart({
         horzLines: { color: 'rgba(255, 255, 255, 0.05)' },
       },
       crosshair: {
-        mode: 1,
+        mode: CrosshairMode.Normal,
         vertLine: {
           color: 'rgba(255, 255, 255, 0.2)',
           width: 1,
@@ -86,10 +90,8 @@ export function TradeChart({
       },
     })
 
-    chartRef.current = chart
-
-    // Create candlestick series
-    const candleSeries = chart.addCandlestickSeries({
+    // Create candlestick series using v5 API
+    const candleSeries = chart.addSeries(CandlestickSeries, {
       upColor: '#22c55e',
       downColor: '#ef4444',
       borderUpColor: '#22c55e',
@@ -97,8 +99,6 @@ export function TradeChart({
       wickUpColor: '#22c55e',
       wickDownColor: '#ef4444',
     })
-
-    candleSeriesRef.current = candleSeries
 
     // Fetch candle data
     const fetchCandles = async () => {
@@ -118,12 +118,18 @@ export function TradeChart({
           return
         }
 
-        // Set candle data
-        candleSeries.setData(candles as CandlestickData<Time>[])
+        // Set candle data - convert time to proper format
+        const formattedCandles = candles.map(c => ({
+          time: c.time as Time,
+          open: c.open,
+          high: c.high,
+          low: c.low,
+          close: c.close,
+        }))
+
+        candleSeries.setData(formattedCandles)
 
         // Add price lines for entry, SL, TP
-        const entryTime = Math.floor(new Date(entryTimestamp).getTime() / 1000)
-
         // Entry price line (blue)
         candleSeries.createPriceLine({
           price: entryPrice,
@@ -190,24 +196,6 @@ export function TradeChart({
           })
         }
 
-        // Add entry marker
-        candleSeries.setMarkers([
-          {
-            time: entryTime as Time,
-            position: 'belowBar',
-            color: '#3b82f6',
-            shape: 'arrowUp',
-            text: 'Entry',
-          },
-          ...((!isOpen && exitTimestamp) ? [{
-            time: Math.floor(new Date(exitTimestamp).getTime() / 1000) as Time,
-            position: 'aboveBar' as const,
-            color: '#f97316',
-            shape: 'arrowDown' as const,
-            text: 'Exit',
-          }] : []),
-        ])
-
         // Fit content
         chart.timeScale().fitContent()
 
@@ -223,8 +211,8 @@ export function TradeChart({
 
     // Handle resize
     const handleResize = () => {
-      if (chartContainerRef.current && chartRef.current) {
-        chartRef.current.applyOptions({
+      if (chartContainerRef.current) {
+        chart.applyOptions({
           width: chartContainerRef.current.clientWidth,
         })
       }
@@ -234,10 +222,7 @@ export function TradeChart({
 
     return () => {
       window.removeEventListener('resize', handleResize)
-      if (chartRef.current) {
-        chartRef.current.remove()
-        chartRef.current = null
-      }
+      chart.remove()
     }
   }, [symbol, entryPrice, entryTimestamp, exitPrice, exitTimestamp, stopLoss, takeProfit1, takeProfit2, currentPrice, isOpen])
 
