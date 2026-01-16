@@ -174,7 +174,7 @@ export function TradeDetailModal({ trade, open, onClose }: TradeDetailModalProps
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-7xl max-h-[95vh] overflow-y-auto p-0 bg-zinc-950 border-zinc-800">
+      <DialogContent className="w-[95vw] max-w-[1800px] max-h-[95vh] overflow-y-auto p-0 bg-zinc-950 border-zinc-800">
         {/* Header */}
         <DialogHeader className="p-4 border-b border-zinc-800 bg-zinc-900/50">
           <DialogTitle className="flex items-center justify-between pr-8">
