@@ -1,6 +1,6 @@
 'use client'
 
-import { formatDistanceStrict } from 'date-fns'
+import { formatDistanceStrict, formatDistanceToNow } from 'date-fns'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -19,6 +19,7 @@ import {
   ShieldX,
   Hand,
   ArrowRightLeft,
+  Clock,
 } from 'lucide-react'
 import type { JournalEntry } from '@/app/(dashboard)/journal/page'
 
@@ -62,7 +63,7 @@ export function JournalTable({ entries, loading, onTradeClick }: JournalTablePro
   if (entries.length === 0) {
     return (
       <div className="h-[400px] flex items-center justify-center text-muted-foreground">
-        No closed trades found
+        No trades found
       </div>
     )
   }
@@ -75,10 +76,10 @@ export function JournalTable({ entries, loading, onTradeClick }: JournalTablePro
             <TableHead>Date</TableHead>
             <TableHead>Symbol</TableHead>
             <TableHead className="text-right">Entry</TableHead>
-            <TableHead className="text-right">Exit</TableHead>
+            <TableHead className="text-right">Exit/Current</TableHead>
             <TableHead className="text-right">P&L</TableHead>
             <TableHead className="hidden md:table-cell">Duration</TableHead>
-            <TableHead className="hidden md:table-cell">Result</TableHead>
+            <TableHead className="hidden md:table-cell">Status</TableHead>
             <TableHead className="hidden lg:table-cell">Exit Reason</TableHead>
             <TableHead className="hidden lg:table-cell text-right">R:R</TableHead>
             <TableHead className="hidden xl:table-cell">Confidence</TableHead>
@@ -88,20 +89,34 @@ export function JournalTable({ entries, loading, onTradeClick }: JournalTablePro
         </TableHeader>
         <TableBody>
           {entries.map((entry) => {
-            const isWin = entry.realized_pnl > 0
-            const exitDate = new Date(entry.exit_timestamp)
+            const isOpen = entry.status === 'OPEN'
+            const pnl = isOpen ? (entry.unrealized_pnl ?? 0) : (entry.realized_pnl ?? 0)
+            const pnlPct = isOpen ? (entry.unrealized_pnl_pct ?? 0) : (entry.realized_pnl_pct ?? 0)
+            const isPositive = pnl > 0
+            const currentOrExitPrice = isOpen ? entry.current_price : entry.exit_price
+
             const entryDate = new Date(entry.entry_timestamp)
-            const duration = formatDistanceStrict(entryDate, exitDate, { addSuffix: false })
+            const displayDate = isOpen ? entryDate : (entry.exit_timestamp ? new Date(entry.exit_timestamp) : entryDate)
+
+            // Duration calculation
+            let duration: string
+            if (isOpen) {
+              duration = formatDistanceToNow(entryDate, { addSuffix: false })
+            } else if (entry.exit_timestamp) {
+              duration = formatDistanceStrict(entryDate, new Date(entry.exit_timestamp), { addSuffix: false })
+            } else {
+              duration = '-'
+            }
 
             return (
               <TableRow key={entry.id} className="cursor-pointer hover:bg-muted/50" onClick={() => onTradeClick(entry)}>
                 <TableCell className="font-medium">
                   <div className="flex flex-col">
                     <span className="text-sm">
-                      {exitDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      {displayDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      {exitDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                      {displayDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
                 </TableCell>
@@ -112,15 +127,17 @@ export function JournalTable({ entries, loading, onTradeClick }: JournalTablePro
                   ${entry.entry_price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}
                 </TableCell>
                 <TableCell className="text-right font-mono text-sm">
-                  ${entry.exit_price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}
+                  {currentOrExitPrice
+                    ? `$${currentOrExitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}`
+                    : '-'}
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex flex-col items-end">
-                    <span className={`font-medium ${isWin ? 'text-green-500' : 'text-red-500'}`}>
-                      {isWin ? '+' : ''}${entry.realized_pnl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    <span className={`font-medium ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
+                      {isPositive ? '+' : ''}${pnl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
-                    <span className={`text-xs ${isWin ? 'text-green-500/70' : 'text-red-500/70'}`}>
-                      {isWin ? '+' : ''}{entry.realized_pnl_pct.toFixed(2)}%
+                    <span className={`text-xs ${isPositive ? 'text-green-500/70' : 'text-red-500/70'}`}>
+                      {isPositive ? '+' : ''}{pnlPct.toFixed(2)}%
                     </span>
                   </div>
                 </TableCell>
@@ -128,16 +145,29 @@ export function JournalTable({ entries, loading, onTradeClick }: JournalTablePro
                   {duration}
                 </TableCell>
                 <TableCell className="hidden md:table-cell">
-                  <Badge variant={isWin ? 'default' : 'destructive'} className="gap-1">
-                    {isWin ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                    {isWin ? 'Win' : 'Loss'}
-                  </Badge>
+                  {isOpen ? (
+                    <Badge variant="secondary" className="gap-1">
+                      <Clock className="h-3 w-3" />
+                      Open
+                    </Badge>
+                  ) : (
+                    <Badge variant={isPositive ? 'default' : 'destructive'} className="gap-1">
+                      {isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                      {isPositive ? 'Win' : 'Loss'}
+                    </Badge>
+                  )}
                 </TableCell>
                 <TableCell className="hidden lg:table-cell">
-                  <Badge variant="outline" className="gap-1">
-                    {exitReasonIcons[entry.exit_reason]}
-                    {exitReasonLabels[entry.exit_reason] || entry.exit_reason}
-                  </Badge>
+                  {isOpen ? (
+                    <span className="text-muted-foreground">-</span>
+                  ) : entry.exit_reason ? (
+                    <Badge variant="outline" className="gap-1">
+                      {exitReasonIcons[entry.exit_reason]}
+                      {exitReasonLabels[entry.exit_reason] || entry.exit_reason}
+                    </Badge>
+                  ) : (
+                    '-'
+                  )}
                 </TableCell>
                 <TableCell className="hidden lg:table-cell text-right font-mono text-sm">
                   {entry.analysis?.risk_reward

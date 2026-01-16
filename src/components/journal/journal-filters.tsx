@@ -22,6 +22,7 @@ import { cn } from '@/lib/utils'
 
 export interface FilterState {
   symbol: string
+  status: string
   winOnly: string
   exitReason: string
   confidence: string
@@ -44,6 +45,7 @@ export function JournalFilters({ filters, onFilterChange }: JournalFiltersProps)
   const clearFilters = () => {
     onFilterChange({
       symbol: '',
+      status: 'all',
       winOnly: 'all',
       exitReason: 'all',
       confidence: 'all',
@@ -54,6 +56,7 @@ export function JournalFilters({ filters, onFilterChange }: JournalFiltersProps)
 
   const hasActiveFilters =
     filters.symbol ||
+    filters.status !== 'all' ||
     filters.winOnly !== 'all' ||
     filters.exitReason !== 'all' ||
     filters.confidence !== 'all' ||
@@ -97,6 +100,18 @@ export function JournalFilters({ filters, onFilterChange }: JournalFiltersProps)
             className="pl-9 w-[180px]"
           />
         </div>
+
+        {/* Status filter */}
+        <Select value={filters.status} onValueChange={(v) => updateFilter('status', v)}>
+          <SelectTrigger className="w-full md:w-[120px]">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Trades</SelectItem>
+            <SelectItem value="open">Open</SelectItem>
+            <SelectItem value="closed">Closed</SelectItem>
+          </SelectContent>
+        </Select>
 
         {/* Win/Loss filter */}
         <Select value={filters.winOnly} onValueChange={(v) => updateFilter('winOnly', v)}>

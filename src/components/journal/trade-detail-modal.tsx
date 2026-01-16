@@ -1,6 +1,6 @@
 'use client'
 
-import { formatDistanceStrict, format } from 'date-fns'
+import { formatDistanceStrict, formatDistanceToNow, format } from 'date-fns'
 import {
   Dialog,
   DialogContent,
@@ -48,10 +48,23 @@ const exitReasonLabels: Record<string, string> = {
 export function TradeDetailModal({ trade, open, onClose }: TradeDetailModalProps) {
   if (!trade) return null
 
-  const isWin = trade.realized_pnl > 0
+  const isOpen = trade.status === 'OPEN'
+  const pnl = isOpen ? (trade.unrealized_pnl ?? 0) : (trade.realized_pnl ?? 0)
+  const pnlPct = isOpen ? (trade.unrealized_pnl_pct ?? 0) : (trade.realized_pnl_pct ?? 0)
+  const isPositive = pnl > 0
+
   const entryDate = new Date(trade.entry_timestamp)
-  const exitDate = new Date(trade.exit_timestamp)
-  const duration = formatDistanceStrict(entryDate, exitDate, { addSuffix: false })
+  const exitDate = trade.exit_timestamp ? new Date(trade.exit_timestamp) : null
+
+  // Duration calculation
+  let duration: string
+  if (isOpen) {
+    duration = formatDistanceToNow(entryDate, { addSuffix: false })
+  } else if (exitDate) {
+    duration = formatDistanceStrict(entryDate, exitDate, { addSuffix: false })
+  } else {
+    duration = '-'
+  }
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -59,12 +72,19 @@ export function TradeDetailModal({ trade, open, onClose }: TradeDetailModalProps
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
             <span className="text-xl font-bold">{trade.symbol.replace('/USDT', '')}</span>
-            <Badge variant={isWin ? 'default' : 'destructive'} className="gap-1">
-              {isWin ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-              {isWin ? 'Win' : 'Loss'}
-            </Badge>
-            <span className={`text-lg font-semibold ${isWin ? 'text-green-500' : 'text-red-500'}`}>
-              {isWin ? '+' : ''}${trade.realized_pnl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {isOpen ? (
+              <Badge variant="secondary" className="gap-1">
+                <Clock className="h-3 w-3" />
+                Open
+              </Badge>
+            ) : (
+              <Badge variant={isPositive ? 'default' : 'destructive'} className="gap-1">
+                {isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                {isPositive ? 'Win' : 'Loss'}
+              </Badge>
+            )}
+            <span className={`text-lg font-semibold ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
+              {isPositive ? '+' : ''}${pnl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </DialogTitle>
         </DialogHeader>
@@ -78,8 +98,8 @@ export function TradeDetailModal({ trade, open, onClose }: TradeDetailModalProps
                   <Percent className="h-3 w-3" />
                   P&L %
                 </div>
-                <div className={`text-lg font-bold ${isWin ? 'text-green-500' : 'text-red-500'}`}>
-                  {isWin ? '+' : ''}{trade.realized_pnl_pct.toFixed(2)}%
+                <div className={`text-lg font-bold ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
+                  {isPositive ? '+' : ''}{pnlPct.toFixed(2)}%
                 </div>
               </CardContent>
             </Card>
@@ -135,23 +155,38 @@ export function TradeDetailModal({ trade, open, onClose }: TradeDetailModalProps
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Exit</p>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    {isOpen ? 'Current Price' : 'Exit'}
+                  </p>
                   <p className="font-mono font-medium">
-                    ${trade.exit_price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 8 })}
+                    {isOpen && trade.current_price
+                      ? `$${trade.current_price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 8 })}`
+                      : trade.exit_price
+                      ? `$${trade.exit_price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 8 })}`
+                      : '-'}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {format(exitDate, 'MMM d, yyyy HH:mm')}
-                  </p>
+                  {!isOpen && exitDate && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {format(exitDate, 'MMM d, yyyy HH:mm')}
+                    </p>
+                  )}
+                  {isOpen && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Live price
+                    </p>
+                  )}
                 </div>
               </div>
 
-              <div className="border-t pt-3">
-                <p className="text-xs text-muted-foreground mb-2">Exit Reason</p>
-                <Badge variant="outline" className="gap-2">
-                  {exitReasonIcons[trade.exit_reason]}
-                  {exitReasonLabels[trade.exit_reason] || trade.exit_reason}
-                </Badge>
-              </div>
+              {!isOpen && trade.exit_reason && (
+                <div className="border-t pt-3">
+                  <p className="text-xs text-muted-foreground mb-2">Exit Reason</p>
+                  <Badge variant="outline" className="gap-2">
+                    {exitReasonIcons[trade.exit_reason]}
+                    {exitReasonLabels[trade.exit_reason] || trade.exit_reason}
+                  </Badge>
+                </div>
+              )}
             </CardContent>
           </Card>
 

@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
     const winOnly = searchParams.get('winOnly')
     const exitReason = searchParams.get('exitReason')
     const confidence = searchParams.get('confidence')
+    const status = searchParams.get('status')
     const from = searchParams.get('from')
     const to = searchParams.get('to')
 
@@ -32,11 +33,23 @@ export async function GET(request: NextRequest) {
         exit_reason,
         realized_pnl,
         realized_pnl_pct,
+        unrealized_pnl,
+        unrealized_pnl_pct,
+        current_price,
         status,
         signal_id
       `)
-      .eq('status', 'CLOSED')
-      .order('exit_timestamp', { ascending: false })
+
+    // Filter by status (default: all)
+    if (status === 'open') {
+      query = query.eq('status', 'OPEN')
+    } else if (status === 'closed') {
+      query = query.eq('status', 'CLOSED')
+    }
+    // If status is 'all' or not specified, fetch all
+
+    // Order by most recent first (entry for open, exit for closed)
+    query = query.order('entry_timestamp', { ascending: false })
 
     // Apply filters
     if (symbol) {
@@ -53,12 +66,13 @@ export async function GET(request: NextRequest) {
       query = query.eq('exit_reason', exitReason)
     }
 
+    // Date filter on entry_timestamp (works for both open and closed)
     if (from) {
-      query = query.gte('exit_timestamp', from)
+      query = query.gte('entry_timestamp', from)
     }
 
     if (to) {
-      query = query.lte('exit_timestamp', to)
+      query = query.lte('entry_timestamp', to)
     }
 
     const { data: positions, error: positionsError } = await query
