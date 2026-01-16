@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   LineChart,
   Brain,
+  BookOpen,
   Settings,
   TrendingUp,
 } from 'lucide-react'
@@ -26,6 +27,11 @@ const navItems = [
     title: 'Analysis',
     href: '/analysis',
     icon: Brain,
+  },
+  {
+    title: 'Journal',
+    href: '/journal',
+    icon: BookOpen,
   },
   {
     title: 'Settings',
