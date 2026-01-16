@@ -54,7 +54,7 @@ const confidenceBadgeVariant: Record<string, 'default' | 'secondary' | 'outline'
 export function JournalTable({ entries, loading, onTradeClick }: JournalTableProps) {
   if (loading) {
     return (
-      <div className="h-[400px] flex items-center justify-center text-muted-foreground">
+      <div className="h-[400px] flex items-center justify-center text-muted-foreground px-4 sm:px-0">
         Loading trades...
       </div>
     )
@@ -62,15 +62,15 @@ export function JournalTable({ entries, loading, onTradeClick }: JournalTablePro
 
   if (entries.length === 0) {
     return (
-      <div className="h-[400px] flex items-center justify-center text-muted-foreground">
+      <div className="h-[400px] flex items-center justify-center text-muted-foreground px-4 sm:px-0">
         No trades found
       </div>
     )
   }
 
   return (
-    <div className="overflow-x-auto">
-      <Table>
+    <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+      <Table className="min-w-[500px]">
         <TableHeader>
           <TableRow>
             <TableHead>Date</TableHead>

@@ -68,14 +68,14 @@ export default async function AnalysisPage() {
             Recent Analyses ({analyses?.length || 0})
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-0 sm:px-6">
           {!analyses || analyses.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               No analyses found
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
+            <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+              <Table className="min-w-[500px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Symbol</TableHead>

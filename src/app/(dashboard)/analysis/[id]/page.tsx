@@ -191,7 +191,7 @@ export default async function AnalysisDetailPage({ params }: AnalysisPageProps) 
           <CardTitle className="text-sm font-medium">Full AI Response</CardTitle>
         </CardHeader>
         <CardContent>
-          <pre className="text-xs bg-muted p-4 rounded-lg overflow-x-auto whitespace-pre-wrap">
+          <pre className="text-xs bg-muted p-4 rounded-lg overflow-x-auto whitespace-pre-wrap break-words max-w-full">
             {analysis.response_received}
           </pre>
         </CardContent>

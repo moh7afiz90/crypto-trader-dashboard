@@ -100,9 +100,9 @@ export function PositionsTable({ initialPositions }: PositionsTableProps) {
           Open Positions ({positions.length})
         </CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="overflow-x-auto">
-          <Table>
+      <CardContent className="px-0 sm:px-6">
+        <div className="overflow-x-auto -mx-0">
+          <Table className="min-w-[600px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Symbol</TableHead>

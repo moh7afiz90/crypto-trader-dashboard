@@ -160,7 +160,7 @@ export default function JournalPage() {
             Trade History
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-0 sm:px-6">
           <JournalTable
             entries={entries}
             loading={loading}
