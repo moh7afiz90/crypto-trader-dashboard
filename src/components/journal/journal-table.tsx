@@ -33,6 +33,8 @@ const exitReasonIcons: Record<string, React.ReactNode> = {
   STOP_LOSS: <ShieldX className="h-3 w-3" />,
   TAKE_PROFIT_1: <Target className="h-3 w-3" />,
   TAKE_PROFIT_2: <Target className="h-3 w-3" />,
+  BREAKEVEN: <ArrowRightLeft className="h-3 w-3" />,
+  TIME_EXPIRY: <Clock className="h-3 w-3" />,
   MANUAL: <Hand className="h-3 w-3" />,
   TRAILING_STOP: <ArrowRightLeft className="h-3 w-3" />,
 }
@@ -41,6 +43,8 @@ const exitReasonLabels: Record<string, string> = {
   STOP_LOSS: 'Stop Loss',
   TAKE_PROFIT_1: 'TP1',
   TAKE_PROFIT_2: 'TP2',
+  BREAKEVEN: 'Breakeven',
+  TIME_EXPIRY: 'Time Expiry',
   MANUAL: 'Manual',
   TRAILING_STOP: 'Trailing',
 }
