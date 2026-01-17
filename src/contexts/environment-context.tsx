@@ -59,11 +59,8 @@ export function EnvironmentProvider({ children }: { children: ReactNode }) {
     window.location.reload()
   }, [])
 
-  // Prevent hydration mismatch by not rendering until mounted
-  if (!mounted) {
-    return <>{children}</>
-  }
-
+  // Always provide the context - use default value until mounted
+  // This prevents "useEnvironment must be used within EnvironmentProvider" errors
   return (
     <EnvironmentContext.Provider
       value={{
