@@ -60,6 +60,7 @@ export function TradeChart({
   const chartRef = useRef<IChartApi | null>(null)
   const seriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null)
   const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null)
+  const priceLinesRef = useRef<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [timeframe, setTimeframe] = useState<Timeframe>('4h')
@@ -202,14 +203,14 @@ export function TradeChart({
         }
 
         // Clear existing price lines
-        const existingPriceLines = (candleSeries as any)._priceLines || []
-        existingPriceLines.forEach((line: any) => {
+        priceLinesRef.current.forEach((line) => {
           try {
             candleSeries.removePriceLine(line)
           } catch {
-            // Ignore errors
+            // Ignore errors if line already removed
           }
         })
+        priceLinesRef.current = []
 
         // Set candle data
         const formattedCandles = candles.map((c) => ({
@@ -231,9 +232,9 @@ export function TradeChart({
 
         volumeSeries.setData(volumeData)
 
-        // Add price lines for entry, SL, TP
+        // Add price lines for entry, SL, TP and store refs
         // Entry price line (blue)
-        candleSeries.createPriceLine({
+        const entryLine = candleSeries.createPriceLine({
           price: entryPrice,
           color: '#3b82f6',
           lineWidth: 2,
@@ -241,9 +242,10 @@ export function TradeChart({
           axisLabelVisible: true,
           title: 'Entry',
         })
+        priceLinesRef.current.push(entryLine)
 
         // Stop loss line (red dashed)
-        candleSeries.createPriceLine({
+        const slLine = candleSeries.createPriceLine({
           price: stopLoss,
           color: '#ef4444',
           lineWidth: 1,
@@ -251,9 +253,10 @@ export function TradeChart({
           axisLabelVisible: true,
           title: 'SL',
         })
+        priceLinesRef.current.push(slLine)
 
         // Take profit 1 line (green dashed)
-        candleSeries.createPriceLine({
+        const tp1Line = candleSeries.createPriceLine({
           price: takeProfit1,
           color: '#22c55e',
           lineWidth: 1,
@@ -261,10 +264,11 @@ export function TradeChart({
           axisLabelVisible: true,
           title: 'TP1',
         })
+        priceLinesRef.current.push(tp1Line)
 
         // Take profit 2 line (green dashed) if exists
         if (takeProfit2) {
-          candleSeries.createPriceLine({
+          const tp2Line = candleSeries.createPriceLine({
             price: takeProfit2,
             color: '#22c55e',
             lineWidth: 1,
@@ -272,11 +276,12 @@ export function TradeChart({
             axisLabelVisible: true,
             title: 'TP2',
           })
+          priceLinesRef.current.push(tp2Line)
         }
 
         // Exit price line (orange) if trade is closed
         if (!isOpen && exitPrice) {
-          candleSeries.createPriceLine({
+          const exitLine = candleSeries.createPriceLine({
             price: exitPrice,
             color: '#f97316',
             lineWidth: 2,
@@ -284,11 +289,12 @@ export function TradeChart({
             axisLabelVisible: true,
             title: 'Exit',
           })
+          priceLinesRef.current.push(exitLine)
         }
 
         // Current price line (cyan) if trade is open
         if (isOpen && currentPrice) {
-          candleSeries.createPriceLine({
+          const currentLine = candleSeries.createPriceLine({
             price: currentPrice,
             color: '#06b6d4',
             lineWidth: 1,
@@ -296,6 +302,7 @@ export function TradeChart({
             axisLabelVisible: true,
             title: 'Current',
           })
+          priceLinesRef.current.push(currentLine)
         }
 
         // Fit content with padding

@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Activity, TrendingUp, TrendingDown, Globe, PieChart, Layers } from 'lucide-react'
@@ -40,6 +41,27 @@ function formatLargeNumber(num: number | null | undefined): string {
   if (num >= 1e9) return `$${(num / 1e9).toFixed(1)}B`
   if (num >= 1e6) return `$${(num / 1e6).toFixed(1)}M`
   return `$${num.toLocaleString()}`
+}
+
+// Component to show current system time
+function MarketTimestamp({ dataTimestamp }: { dataTimestamp: string }) {
+  const [currentTime, setCurrentTime] = useState<string>('')
+
+  useEffect(() => {
+    // Set initial time
+    setCurrentTime(new Date().toLocaleTimeString())
+
+    // Update every second
+    const interval = setInterval(() => {
+      setCurrentTime(new Date().toLocaleTimeString())
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [])
+
+  if (!currentTime) return null
+
+  return <span>{currentTime}</span>
 }
 
 export function MarketCard({ market }: MarketCardProps) {
@@ -188,9 +210,9 @@ export function MarketCard({ market }: MarketCardProps) {
           </div>
         </div>
 
-        {/* Last Update */}
+        {/* Last Update - show current system time */}
         <div className="text-[10px] text-muted-foreground text-right">
-          Updated: {new Date(market.timestamp).toLocaleTimeString()}
+          <MarketTimestamp dataTimestamp={market.timestamp} />
         </div>
       </CardContent>
     </Card>
