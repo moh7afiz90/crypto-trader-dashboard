@@ -3,7 +3,6 @@
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { ThemeToggle } from './theme-toggle'
-import { EnvironmentSwitcher } from './environment-switcher'
 import { Button } from '@/components/ui/button'
 import { LogOut, TrendingUp } from 'lucide-react'
 import type { User } from '@supabase/supabase-js'
@@ -38,7 +37,6 @@ export function Header({ user }: HeaderProps) {
 
         {/* Right side actions */}
         <div className="flex items-center gap-2">
-          <EnvironmentSwitcher />
           <ThemeToggle />
           {user && (
             <Button
