@@ -1,14 +1,46 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+type Environment = 'staging' | 'production'
+
+// Environment-specific Supabase configuration (must match client.ts and server.ts)
+const supabaseConfig = {
+  production: {
+    url: process.env.NEXT_PUBLIC_SUPABASE_URL_PROD || process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY_PROD || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  },
+  staging: {
+    url: process.env.NEXT_PUBLIC_SUPABASE_URL_STAGING || process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY_STAGING || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  },
+}
+
+const DEFAULT_ENVIRONMENT: Environment =
+  (process.env.NEXT_PUBLIC_DEFAULT_ENV as Environment) || 'staging'
+
+// Get environment from request cookies
+function getEnvironmentFromRequest(request: NextRequest): Environment {
+  const envCookie = request.cookies.get('selected-environment')
+
+  if (envCookie?.value === 'production' || envCookie?.value === 'staging') {
+    return envCookie.value
+  }
+
+  return DEFAULT_ENVIRONMENT
+}
+
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
   })
 
+  // Get the selected environment from cookies
+  const environment = getEnvironmentFromRequest(request)
+  const config = supabaseConfig[environment]
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    config.url,
+    config.anonKey,
     {
       cookies: {
         getAll() {
